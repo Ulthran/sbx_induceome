@@ -1,0 +1,6 @@
+name: sbx_template
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - samtools
