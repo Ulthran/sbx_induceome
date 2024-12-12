@@ -1,4 +1,4 @@
-name: sbx_template
+name: sbx_induceome
 channels:
   - conda-forge
   - bioconda
