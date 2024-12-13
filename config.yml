@@ -1,2 +1,3 @@
 sbx_induceome:
-  example_rule_options: 'DUMMY STRING'
+  threads: 8
+  reference_fp: ''
