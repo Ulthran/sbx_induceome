@@ -1,3 +1,6 @@
+import csv
+
+
 def get_induceome_path() -> Path:
     for fp in sys.path:
         if fp.split("/")[-1] == "sbx_induceome":
@@ -19,14 +22,27 @@ def get_induceome_ref_var(sample: str) -> str:
 
 INDUCEOME_FP = Cfg["all"]["output_fp"] / "virus" / "induceome"
 SBX_INDUCEOME_VERSION = open(get_induceome_path() / "VERSION").read().strip()
+
+
+# Ingest reference mapping
 SBX_INDUCEOME_REF_FP = Path(Cfg["sbx_induceome"]["reference_fp"])
-# There are a couple assumptions we're making in this mapping:
-# 1. The reference file is named cd{number}.fas
-# 2. The sample name is in the format T{number}_....fastq.gz
+with open(Cfg["sbx_induceome"]["mapping_fp"]) as f:
+    csv_reader = csv.reader(f, delimiter=",")
+    header = next(csv_reader)
+    sample_id_idx = header.index("Sample_ID")
+    strain_idx = header.index("strain")
+    SBX_INDUCEOME_REF_MAP = {
+        row[sample_id_idx]: SBX_INDUCEOME_REF_FP / f"{row[strain_idx]}.fasta"
+        for row in csv_reader
+    }
+# Update reference mapping with true sample names
+# Needed because we only get "PSP####-1" from metadata sheet but the full sample name is "PSP####-1_S#"
+# PSP value SHOULD be unique though
 SBX_INDUCEOME_REF_MAP = {
-    sample: SBX_INDUCEOME_REF_FP / f"cd{get_induceome_ref_var(sample)}.fas"
-    for sample in Samples
+    [sample for sample in Samples.keys() if sample_id in sample][0]: ref
+    for sample_id, ref in SBX_INDUCEOME_REF_MAP.items()
 }
+print(SBX_INDUCEOME_REF_MAP)
 
 
 try:

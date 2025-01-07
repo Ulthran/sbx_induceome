@@ -1,3 +1,4 @@
 sbx_induceome:
   threads: 8
   reference_fp: ''
+  mapping_fp: ''
