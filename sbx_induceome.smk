@@ -45,6 +45,11 @@ for sample_id, ref in SBX_INDUCEOME_REF_MAP.items():
     else:
         print(f"Sample {sample_id} not found in Samples list")
 SBX_INDUCEOME_REF_MAP = NEW_SBX_INDUCEOME_REF_MAP
+# Remove any references that don't exist
+# Necessary in case some controls don't have references
+SBX_INDUCEOME_REF_MAP = {
+    sample: ref for sample, ref in SBX_INDUCEOME_REF_MAP.items() if ref.exists()
+}
 print(SBX_INDUCEOME_REF_MAP)
 
 
