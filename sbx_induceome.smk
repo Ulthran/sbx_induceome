@@ -40,7 +40,6 @@ with open(Cfg["sbx_induceome"]["mapping_fp"]) as f:
 # PSP value SHOULD be unique though
 for sample_id, ref in SBX_INDUCEOME_REF_MAP.items():
     if [x for x in Samples if sample_id in x]:
-        del SBX_INDUCEOME_REF_MAP[sample_id]
         SBX_INDUCEOME_REF_MAP[[x for x in Samples if sample_id in x][0]] = ref
     else:
         print(f"Sample {sample_id} not found in Samples list")
