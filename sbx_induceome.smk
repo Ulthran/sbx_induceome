@@ -51,6 +51,12 @@ SBX_INDUCEOME_REF_MAP = {
     sample: ref for sample, ref in SBX_INDUCEOME_REF_MAP.items() if ref.exists()
 }
 print(SBX_INDUCEOME_REF_MAP)
+# Reduce samples to only those with references
+SBX_INDUCEOME_SAMPLES = {
+    sample: fps
+    for sample, fps in Samples.items()
+    if sample in SBX_INDUCEOME_REF_MAP.keys()
+}
 
 
 try:
@@ -69,7 +75,9 @@ localrules:
 
 rule all_induceome:
     input:
-        expand(INDUCEOME_FP / "pileups" / "{sample}.pileup", sample=Samples),
+        expand(
+            INDUCEOME_FP / "pileups" / "{sample}.pileup", sample=SBX_INDUCEOME_SAMPLES
+        ),
 
 
 rule induceome_bwa_index:
