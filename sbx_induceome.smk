@@ -38,10 +38,12 @@ with open(Cfg["sbx_induceome"]["mapping_fp"]) as f:
 # Update reference mapping with true sample names
 # Needed because we only get "PSP####-1" from metadata sheet but the full sample name is "PSP####-1_S#"
 # PSP value SHOULD be unique though
-SBX_INDUCEOME_REF_MAP = {
-    [sample for sample in Samples.keys() if sample_id in sample][0]: ref
-    for sample_id, ref in SBX_INDUCEOME_REF_MAP.items()
-}
+for sample_id, ref in SBX_INDUCEOME_REF_MAP.items():
+    if [x for x in Samples if sample_id in x]:
+        del SBX_INDUCEOME_REF_MAP[sample_id]
+        SBX_INDUCEOME_REF_MAP[[x for x in Samples if sample_id in x][0]] = ref
+    else:
+        print(f"Sample {sample_id} not found in Samples list")
 print(SBX_INDUCEOME_REF_MAP)
 
 
