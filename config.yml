@@ -4,3 +4,4 @@ sbx_induceome:
   mapping_fp: ''
   prominence: 500
   distance: 1000
+  min_width: 5000

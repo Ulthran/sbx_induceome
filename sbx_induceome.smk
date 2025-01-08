@@ -169,6 +169,7 @@ rule induceome_find_peaks:
     params:
         prominence=Cfg["sbx_induceome"]["prominence"],
         distance=Cfg["sbx_induceome"]["distance"],
+        min_width=Cfg["sbx_induceome"]["min_width"],
     conda:
         "envs/sbx_induceome_env.yml"
     container:

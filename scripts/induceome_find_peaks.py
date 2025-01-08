@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.signal import find_peaks
+from scipy.signal import find_peaks, peak_widths
 
 
 # Define function to parse mpileup file
@@ -32,27 +32,29 @@ def infer_prominence(coverage_data, factor=5):
     1. Few peaks of interest.
     2. Peaks rise substantially above the background (factor x baseline).
     3. Peaks have some thickness (measured by width).
-    
+
     Args:
         coverage_data (np.array): Array of coverage values.
         factor (int): Factor by which a peak must exceed the baseline.
-        
+
     Returns:
         float: Suggested prominence value.
     """
-    # Calculate baseline coverage (e.g., median of low values)
-    baseline = np.median(coverage_data)
-    
-    # Suggested prominence: Factor times the baseline
+    # Use the 75th percentile of non-zero values as the baseline
+    non_zero_coverage = coverage_data[coverage_data > 0]
+    if len(non_zero_coverage) == 0:
+        return 1  # Don't error out on empty coverage data
+
+    baseline = np.percentile(non_zero_coverage, 75)  # 75th percentile
     suggested_prominence = factor * baseline
-    print(f"Baseline coverage: {baseline}")
+    print(f"Baseline (75th percentile of non-zero values): {baseline}")
     print(f"Suggested prominence (factor {factor}): {suggested_prominence}")
-    
+
     return suggested_prominence
 
 
 # Detect peaks
-def detect_peaks(coverage_data, prominence, distance):
+def detect_peaks(coverage_data, prominence, distance, min_width):
     """
     Detect peaks in coverage data.
 
@@ -64,12 +66,22 @@ def detect_peaks(coverage_data, prominence, distance):
     Returns:
         list: Indices of detected peaks.
     """
+    # Find peaks in the coverage data
     peaks, _ = find_peaks(coverage_data, prominence=prominence, distance=distance)
-    return peaks
+
+    # Calculate peak widths at half prominence height
+    widths = peak_widths(coverage_data, peaks, rel_height=0.5)[0]
+
+    # Filter peaks based on minimum width
+    valid_peaks = [p for p, w in zip(peaks, widths) if w >= min_width]
+    print(f"Total peaks detected: {len(peaks)}")
+    print(f"Peaks after width filter (≥ {min_width}): {len(valid_peaks)}")
+
+    return valid_peaks
 
 
 # Main workflow
-def extract_peaks(file_path, output_image_fp, distance=500):
+def extract_peaks(file_path, output_image_fp, distance, min_width):
     # Parse the mpileup file
     df = parse_mpileup(file_path)
 
@@ -83,8 +95,12 @@ def extract_peaks(file_path, output_image_fp, distance=500):
     # plt.show()
 
     # Detect peaks in the coverage data
+    cov_values = df["Coverage"].values
     peaks = detect_peaks(
-        df["Coverage"].values, prominence=infer_prominence(df["Coverage"].values), distance=distance
+        cov_values,
+        prominence=infer_prominence(cov_values),
+        distance=distance,
+        min_width=min_width,
     )
 
     # Extract peak regions
@@ -114,5 +130,6 @@ peak_data = extract_peaks(
     snakemake.input.pileup,
     snakemake.output.peaks_img,
     distance=snakemake.params.distance,
+    min_width=snakemake.params.min_width,
 )
 peak_data.to_csv(snakemake.output.peaks_csv, index=False)
