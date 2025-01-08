@@ -1,0 +1,7 @@
+.tests/data/ref/*.amb
+.tests/data/ref/*.ann
+.tests/data/ref/*.bwt
+.tests/data/ref/*.fai
+.tests/data/ref/*.pac
+.tests/data/ref/*.sa
+.snakemake/

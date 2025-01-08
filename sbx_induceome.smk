@@ -75,9 +75,8 @@ localrules:
 
 rule all_induceome:
     input:
-        expand(
-            INDUCEOME_FP / "pileups" / "{sample}.pileup", sample=SBX_INDUCEOME_SAMPLES
-        ),
+        expand(INDUCEOME_FP / "peaks" / "{sample}.png", sample=SBX_INDUCEOME_SAMPLES),
+        expand(INDUCEOME_FP / "peaks" / "{sample}.csv", sample=SBX_INDUCEOME_SAMPLES),
 
 
 rule induceome_bwa_index:
