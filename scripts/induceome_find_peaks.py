@@ -26,8 +26,33 @@ def parse_mpileup(file_path):
     return pd.DataFrame(data, columns=["Position", "Coverage"])
 
 
+def infer_prominence(coverage_data, factor=5):
+    """
+    Infer the best prominence for peak detection based on assumptions:
+    1. Few peaks of interest.
+    2. Peaks rise substantially above the background (factor x baseline).
+    3. Peaks have some thickness (measured by width).
+    
+    Args:
+        coverage_data (np.array): Array of coverage values.
+        factor (int): Factor by which a peak must exceed the baseline.
+        
+    Returns:
+        float: Suggested prominence value.
+    """
+    # Calculate baseline coverage (e.g., median of low values)
+    baseline = np.median(coverage_data)
+    
+    # Suggested prominence: Factor times the baseline
+    suggested_prominence = factor * baseline
+    print(f"Baseline coverage: {baseline}")
+    print(f"Suggested prominence (factor {factor}): {suggested_prominence}")
+    
+    return suggested_prominence
+
+
 # Detect peaks
-def detect_peaks(coverage_data, prominence=10, distance=50):
+def detect_peaks(coverage_data, prominence, distance):
     """
     Detect peaks in coverage data.
 
@@ -44,7 +69,7 @@ def detect_peaks(coverage_data, prominence=10, distance=50):
 
 
 # Main workflow
-def extract_peaks(file_path, output_image_fp, prominence=10, distance=50):
+def extract_peaks(file_path, output_image_fp, distance=500):
     # Parse the mpileup file
     df = parse_mpileup(file_path)
 
@@ -59,7 +84,7 @@ def extract_peaks(file_path, output_image_fp, prominence=10, distance=50):
 
     # Detect peaks in the coverage data
     peaks = detect_peaks(
-        df["Coverage"].values, prominence=prominence, distance=distance
+        df["Coverage"].values, prominence=infer_prominence(df["Coverage"].values), distance=distance
     )
 
     # Extract peak regions
@@ -88,7 +113,6 @@ def extract_peaks(file_path, output_image_fp, prominence=10, distance=50):
 peak_data = extract_peaks(
     snakemake.input.pileup,
     snakemake.output.peaks_img,
-    prominence=snakemake.params.prominence,
     distance=snakemake.params.distance,
 )
 peak_data.to_csv(snakemake.output.peaks_csv, index=False)
