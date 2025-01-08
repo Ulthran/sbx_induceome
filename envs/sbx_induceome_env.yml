@@ -5,3 +5,9 @@ channels:
 dependencies:
   - bwa
   - samtools
+  - pip
+  - pip:
+    - numpy
+    - scipy
+    - pandas
+    - matplotlib

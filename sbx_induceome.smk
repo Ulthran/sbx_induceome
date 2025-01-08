@@ -154,3 +154,25 @@ rule induceome_samtools_sort:
         samtools index {output.sorted} 2>> {log}
         samtools mpileup -A -a -Q 0 -f {input.ref} {output.sorted} > {output.pileup} 2>> {log}
         """
+
+
+rule induceome_find_peaks:
+    """Find coverage peaks in the pileup"""
+    input:
+        pileup=INDUCEOME_FP / "pileups" / "{sample}.pileup",
+    output:
+        peaks_img=INDUCEOME_FP / "peaks" / "{sample}.png",
+        peaks_csv=INDUCEOME_FP / "peaks" / "{sample}.csv",
+    log:
+        LOG_FP / "induceome_find_peaks_{sample}.log",
+    benchmark:
+        BENCHMARK_FP / "induceome_find_peaks_{sample}.tsv"
+    params:
+        prominence=Cfg["sbx_induceome"]["prominence"],
+        distance=Cfg["sbx_induceome"]["distance"],
+    conda:
+        "envs/sbx_induceome_env.yml"
+    container:
+        f"docker://sunbeamlabs/sbx_induceome:{SBX_INDUCEOME_VERSION}"
+    script:
+        "scripts/induceome_find_peaks.py"

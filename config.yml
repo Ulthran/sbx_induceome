@@ -2,3 +2,5 @@ sbx_induceome:
   threads: 8
   reference_fp: ''
   mapping_fp: ''
+  prominence: 500
+  distance: 1000
