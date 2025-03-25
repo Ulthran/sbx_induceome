@@ -2,6 +2,6 @@ sbx_induceome:
   threads: 8
   reference_fp: ''
   mapping_fp: ''
-  prominence: 500
-  distance: 1000
-  min_width: 5000
+  blast_db: ''
+  min_width: 100
+  smoothing_factor: 10

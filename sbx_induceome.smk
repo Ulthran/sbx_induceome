@@ -77,6 +77,7 @@ rule all_induceome:
     input:
         expand(INDUCEOME_FP / "peaks" / "{sample}.png", sample=SBX_INDUCEOME_SAMPLES),
         expand(INDUCEOME_FP / "peaks" / "{sample}.csv", sample=SBX_INDUCEOME_SAMPLES),
+        expand(INDUCEOME_FP / "blastx" / "{sample}.btf", sample=SBX_INDUCEOME_SAMPLES),
 
 
 rule induceome_bwa_index:
@@ -159,20 +160,61 @@ rule induceome_find_peaks:
     """Find coverage peaks in the pileup"""
     input:
         pileup=INDUCEOME_FP / "pileups" / "{sample}.pileup",
+        ref=lambda wildcards: SBX_INDUCEOME_REF_MAP[wildcards.sample],
     output:
         peaks_img=INDUCEOME_FP / "peaks" / "{sample}.png",
         peaks_csv=INDUCEOME_FP / "peaks" / "{sample}.csv",
+        peaks_contigs=INDUCEOME_FP / "peaks" / "{sample}_contigs.fasta",
     log:
         LOG_FP / "induceome_find_peaks_{sample}.log",
     benchmark:
         BENCHMARK_FP / "induceome_find_peaks_{sample}.tsv"
     params:
-        prominence=Cfg["sbx_induceome"]["prominence"],
-        distance=Cfg["sbx_induceome"]["distance"],
         min_width=Cfg["sbx_induceome"]["min_width"],
+        smoothing_factor=Cfg["sbx_induceome"]["smoothing_factor"]
     conda:
         "envs/sbx_induceome_env.yml"
     container:
         f"docker://sunbeamlabs/sbx_induceome:{SBX_INDUCEOME_VERSION}"
     script:
         "scripts/induceome_find_peaks.py"
+
+
+rule induceome_blastx:
+    """Run blastx on untranslated genes against a target db and write to blast tabular format."""
+    input:
+        peaks_contigs=INDUCEOME_FP / "peaks" / "{sample}_contigs.fasta",
+    output:
+        INDUCEOME_FP / "blastx" / "{sample}.btf",
+    benchmark:
+        BENCHMARK_FP / "run_induceome_blastx_{sample}.tsv"
+    log:
+        LOG_FP / "run_induceome_blastx_{sample}.log",
+    params:
+        blast_db=Cfg["sbx_induceome"]["blast_db"],
+    threads: Cfg["sbx_induceome"]["threads"]
+    resources:
+        mem_mb=24000,
+        runtime=720,
+    conda:
+        "envs/sbx_induceome_env.yml"
+    container:
+        f"docker://sunbeamlabs/sbx_induceome:{SBX_INDUCEOME_VERSION}"
+    shell:
+        """
+        if [ -s {input} ]; then
+            export BLASTDB=$(dirname {params.blast_db})
+            blastx \
+            -query {input} \
+            -db $(basename {params.blast_db}) \
+            -outfmt "7 qacc sacc pident length mismatch gapopen qstart qend sstart send evalue bitscore stitle" \
+            -num_threads {threads} \
+            -evalue 0.05 \
+            -max_target_seqs 100 \
+            -out {output} \
+            2>&1 | tee {log}
+        else
+            echo "Caught empty query" >> {log}
+            touch {output}
+        fi
+        """

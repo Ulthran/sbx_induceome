@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.signal import find_peaks, peak_widths
+from pathlib import Path
 
 
 # Define function to parse mpileup file
@@ -23,113 +23,172 @@ def parse_mpileup(file_path):
                 position = int(cols[1])
                 coverage = int(cols[3])
                 data.append((position, coverage))
+
+    print(f"Total positions: {len(data)}")
+
     return pd.DataFrame(data, columns=["Position", "Coverage"])
 
 
-def infer_prominence(coverage_data, factor=5):
+def infer_prominence(coverage_data, factor=20):
     """
-    Infer the best prominence for peak detection based on assumptions:
-    1. Few peaks of interest.
-    2. Peaks rise substantially above the background (factor x baseline).
-    3. Peaks have some thickness (measured by width).
+    Infer the prominence threshold for peak detection.
 
     Args:
         coverage_data (np.array): Array of coverage values.
-        factor (int): Factor by which a peak must exceed the baseline.
 
     Returns:
-        float: Suggested prominence value.
+        int: Suggested prominence threshold.
     """
-    # Use the 75th percentile of non-zero values as the baseline
-    non_zero_coverage = coverage_data[coverage_data > 0]
-    if len(non_zero_coverage) == 0:
-        return 1  # Don't error out on empty coverage data
-
-    baseline = np.percentile(non_zero_coverage, 75)  # 75th percentile
-    suggested_prominence = factor * baseline
-    print(f"Baseline (75th percentile of non-zero values): {baseline}")
-    print(f"Suggested prominence (factor {factor}): {suggested_prominence}")
-
-    return suggested_prominence
+    avg_coverage = np.nanmean(coverage_data)
+    max_coverage = np.nanmax(coverage_data)
+    print(print(f"Average coverage: {avg_coverage}"))
+    print(f"Max coverage: {max_coverage}")
+    return max_coverage / factor
+    return avg_coverage * factor
 
 
-# Detect peaks
-def detect_peaks(coverage_data, prominence, distance, min_width):
+def find_peak_regions_sliding_window(df, threshold, window_size=500):
     """
-    Detect peaks in coverage data.
+    Identifies peak regions using a sliding window average.
 
     Args:
-        coverage_data (np.array): Array of coverage values.
-        prominence (int): Minimum prominence of peaks.
-        distance (int): Minimum distance between peaks.
+        df (pd.DataFrame): DataFrame with 'Position' and 'Coverage' columns.
+        threshold (float): Minimum average coverage required for a peak.
+        window_size (int): Size of the sliding window in base pairs.
 
     Returns:
-        list: Indices of detected peaks.
+        pd.DataFrame: DataFrame with columns ['Start', 'End', 'Average_Coverage'].
     """
-    # Find peaks in the coverage data
-    peaks, _ = find_peaks(coverage_data, prominence=prominence, distance=distance)
+    # Ensure the DataFrame is sorted by position
+    # df = df.sort_values(by="Position").reset_index(drop=True)
 
-    # Calculate peak widths at half prominence height
-    widths = peak_widths(coverage_data, peaks, rel_height=0.5)[0]
+    # List to store detected peaks
+    peaks = []
 
-    # Filter peaks based on minimum width
-    valid_peaks = [p for p, w in zip(peaks, widths) if w >= min_width]
-    print(f"Total peaks detected: {len(peaks)}")
-    print(f"Peaks after width filter (≥ {min_width}): {len(valid_peaks)}")
+    # Iterate with a sliding window
+    for i in range(0, len(df) - window_size, window_size):
+        avg_cov = df.loc[i : i + window_size, "Coverage"].mean()
+        if avg_cov >= threshold:
+            # Add the new peak or extend the previous one
+            if not peaks:
+                peaks.append(
+                    (
+                        df.loc[i, "Position"],
+                        df.loc[i + window_size, "Position"],
+                        avg_cov,
+                    )
+                )
+            elif df.loc[i, "Position"] - peaks[-1][1] <= window_size:
+                peaks[-1] = (peaks[-1][0], df.loc[i + window_size, "Position"], avg_cov)
+            else:
+                peaks.append(
+                    (
+                        df.loc[i, "Position"],
+                        df.loc[i + window_size, "Position"],
+                        avg_cov,
+                    )
+                )
 
-    return valid_peaks
+    # Convert list of peaks to DataFrame
+    peak_regions_df = pd.DataFrame(peaks, columns=["Start", "End", "Average_Coverage"])
+
+    return peak_regions_df
 
 
-# Main workflow
-def extract_peaks(file_path, output_image_fp, distance, min_width):
-    # Parse the mpileup file
-    df = parse_mpileup(file_path)
+def smooth_peaks(peaks, coverage, smoothing_range=1000):
+    """
+    Smooth the detected peak regions by merging nearby peaks.
 
-    # Plot plain coverage
+    Args:
+        peaks (pd.DataFrame): DataFrame with 'Start', 'End', 'Average_Coverage'
+        coverage (pd.DataFrame): DataFrame with 'Position' and 'Coverage'
+        smoothing_range (int): Maximum distance between peaks to merge
+
+    Returns:
+        pd.DataFrame: DataFrame with 'Start', 'End', 'Average_Coverage'
+    """
+    smoothed_peaks = []
+    final_peaks = []
+    for i, peak in peaks.iterrows():
+        if not smoothed_peaks:
+            smoothed_peaks.append(peak)
+        elif peak["Start"] - smoothed_peaks[-1][1] <= smoothing_range:
+            smoothed_peaks[-1] = (
+                smoothed_peaks[-1][0],
+                peak["End"],
+                peak["Average_Coverage"],
+            )
+        else:
+            smoothed_peaks.append(peak)
+
+    # Recalculate average coverage for smoothed peaks
+    for i, peak in enumerate(smoothed_peaks):
+        start, end = peak[0], peak[1]
+        avg_cov = coverage.loc[
+            (coverage["Position"] >= start) & (coverage["Position"] <= end), "Coverage"
+        ].mean()
+        final_peaks.append((start, end, avg_cov))
+
+    return pd.DataFrame(final_peaks, columns=["Start", "End", "Average_Coverage"])
+
+
+def plot_peaks(df, peaks, threshold, output_image_fp):
+    """
+    Plot the coverage data with detected peak regions and threshold line.
+
+    Args:
+        df (pd.DataFrame): DataFrame with 'Position' and 'Coverage'
+        peaks (pd.DataFrame): DataFrame with 'Start', 'End', 'Average_Coverage'
+        threshold (float): Minimum coverage threshold for peaks
+        output_image_fp (str): Output image file path
+    """
     plt.figure(figsize=(12, 6))
     plt.plot(df["Position"], df["Coverage"], label="Coverage")
+    plt.axhline(threshold, color="r", linestyle="--", label="Threshold")
+
+    for _, peak in peaks.iterrows():
+        plt.axvspan(peak["Start"], peak["End"], color="gray", alpha=0.5)
+
     plt.xlabel("Position")
     plt.ylabel("Coverage")
-    plt.title("Plain Coverage Plot")
+    plt.title("Coverage Plot with Peak Regions")
     plt.legend()
-    # plt.show()
-
-    # Detect peaks in the coverage data
-    cov_values = df["Coverage"].values
-    peaks = detect_peaks(
-        cov_values,
-        prominence=infer_prominence(cov_values),
-        distance=distance,
-        min_width=min_width,
-    )
-
-    # Extract peak regions
-    peak_positions = df.iloc[peaks]
-
-    # Plot the results for visualization
-    plt.figure(figsize=(10, 6))
-    plt.plot(df["Position"], df["Coverage"], label="Coverage")
-    plt.scatter(
-        peak_positions["Position"],
-        peak_positions["Coverage"],
-        color="red",
-        label="Peaks",
-    )
-    plt.xlabel("Position")
-    plt.ylabel("Coverage")
-    plt.title("Coverage Peaks")
-    plt.legend()
-    plt.savefig(output_image_fp, dpi=300, bbox_inches="tight")
-    # plt.show()
-
-    return peak_positions
+    plt.savefig(output_image_fp)
+    plt.close()
 
 
 # Example usage
-peak_data = extract_peaks(
-    snakemake.input.pileup,
-    snakemake.output.peaks_img,
-    distance=snakemake.params.distance,
-    min_width=snakemake.params.min_width,
+df = parse_mpileup(snakemake.input.pileup)
+if df.empty:
+    print("No coverage reported.")
+    Path(snakemake.output.peaks_img).touch()
+    Path(snakemake.output.peaks_contigs).touch()
+    with open(snakemake.output.peaks_csv, "w") as f:
+        f.write("Start,End,Average_Coverage\n")
+    exit(0)
+
+threshold = infer_prominence(df["Coverage"].values)
+print("Threshold: ", threshold)
+peaks = find_peak_regions_sliding_window(
+    df, threshold=threshold, window_size=snakemake.params.min_width
 )
-peak_data.to_csv(snakemake.output.peaks_csv, index=False)
+peaks = smooth_peaks(
+    peaks, df, snakemake.params.smoothing_factor * snakemake.params.min_width
+)
+plot_peaks(df, peaks, threshold, snakemake.output.peaks_img)
+# plot_peaks(df.head(10000), pd.DataFrame(), threshold, snakemake.output.peaks_img)
+
+with open(snakemake.input.ref) as f:
+    ref = ""
+    for line in f.readlines():
+        if not line.startswith(">"):
+            ref += line.strip()
+
+with open(snakemake.output.peaks_contigs, "w") as f:
+    for _, peak in peaks.iterrows():
+        start = int(peak["Start"])
+        end = int(peak["End"])
+        f.write(f"> {start} - {end}\n")
+        f.write(f"{ref[start:end]}\n")
+
+peaks.to_csv(snakemake.output.peaks_csv, index=False)

@@ -35,6 +35,10 @@ NOTE: sbx_induceome makes a couple assumptions about your reference genomes and 
 
   - threads: Number of cores to use when running bwa
   - reference_fp: Directory with reference genomes
+  - mapping_fp: Path to the file mapping samples to strains
+  - blast_db: Path to the viral blast db (full path including .faa file name)
+  - min_width: The sliding window size for peak finding
+  - smoothing_factor: The number of below-threshold sliding windows to tolerate as being part of one peak
     
 ## Installing an extension (legacy instructions for sunbeam <3.0)
 

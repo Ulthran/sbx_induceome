@@ -3,6 +3,7 @@ channels:
   - conda-forge
   - bioconda
 dependencies:
+  - blast
   - bwa
   - samtools
   - pip
