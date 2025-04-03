@@ -78,6 +78,10 @@ rule all_induceome:
         expand(INDUCEOME_FP / "peaks" / "{sample}.png", sample=SBX_INDUCEOME_SAMPLES),
         expand(INDUCEOME_FP / "peaks" / "{sample}.csv", sample=SBX_INDUCEOME_SAMPLES),
         expand(INDUCEOME_FP / "blastx" / "{sample}.btf", sample=SBX_INDUCEOME_SAMPLES),
+        expand(
+            INDUCEOME_FP / "phold" / "{sample}_compare" / "phold.gbk",
+            sample=SBX_INDUCEOME_SAMPLES,
+        ),
 
 
 rule induceome_bwa_index:
@@ -171,13 +175,18 @@ rule induceome_find_peaks:
         BENCHMARK_FP / "induceome_find_peaks_{sample}.tsv"
     params:
         min_width=Cfg["sbx_induceome"]["min_width"],
-        smoothing_factor=Cfg["sbx_induceome"]["smoothing_factor"]
+        smoothing_factor=Cfg["sbx_induceome"]["smoothing_factor"],
     conda:
         "envs/sbx_induceome_env.yml"
     container:
         f"docker://sunbeamlabs/sbx_induceome:{SBX_INDUCEOME_VERSION}"
     script:
         "scripts/induceome_find_peaks.py"
+
+
+###
+# BLAST
+###
 
 
 rule induceome_blastx:
@@ -216,5 +225,65 @@ rule induceome_blastx:
         else
             echo "Caught empty query" >> {log}
             touch {output}
+        fi
+        """
+
+
+###
+# PHOLD
+###
+
+
+rule induceome_install_phold_database:
+    output:
+        annotations=Path(Cfg["sbx_induceome"]["phold_db"]) / "phold_annots.tsv",
+    conda:
+        "envs/sbx_induceome_env.yml"
+    container:
+        f"docker://sunbeamlabs/sbx_induceome:{SBX_INDUCEOME_VERSION}"
+    shell:
+        """
+        phold install --database $(dirname {output.annotations})
+        """
+
+
+rule induceome_phold_predict:
+    input:
+        contigs=ASSEMBLY_FP / "megahit" / "{sample}_asm" / "final.contigs.fa",
+        annotations=Path(Cfg["sbx_induceome"]["phold_db"]) / "phold_annots.tsv",
+    output:
+        _3di=INDUCEOME_FP / "phold" / "{sample}_predict" / "phold_3di.fasta",
+    conda:
+        "envs/sbx_induceome_env.yml"
+    container:
+        f"docker://sunbeamlabs/sbx_induceome:{SBX_INDUCEOME_VERSION}"
+    shell:
+        """
+        if [ ! -s {input.contigs} ]; then
+            touch {output._3di}
+        else
+            phold predict -i {input.contigs} -o $(dirname {output._3di}) --database $(dirname {input.annotations}) --cpu --force
+        fi
+        """
+
+
+rule induceome_phold_compare:
+    input:
+        contigs=ASSEMBLY_FP / "megahit" / "{sample}_asm" / "final.contigs.fa",
+        _3di=INDUCEOME_FP / "phold" / "{sample}_predict" / "phold_3di.fasta",
+        annotations=Path(Cfg["sbx_induceome"]["phold_db"]) / "phold_annots.tsv",
+    output:
+        gbk=INDUCEOME_FP / "phold" / "{sample}_compare" / "phold.gbk",
+    conda:
+        "envs/sbx_induceome_env.yml"
+    container:
+        f"docker://sunbeamlabs/sbx_induceome:{SBX_INDUCEOME_VERSION}"
+    threads: 8
+    shell:
+        """
+        if [ ! -s {input._3di} ]; then
+            touch {output.gbk}
+        else
+            phold compare -i {input.contigs} --predictions_dir $(dirname {input._3di}) -o $(dirname {output.gbk}) --database $(dirname {input.annotations}) -t 8 --force
         fi
         """

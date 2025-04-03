@@ -5,6 +5,7 @@ channels:
 dependencies:
   - blast
   - bwa
+  - phold
   - samtools
   - pip
   - pip:

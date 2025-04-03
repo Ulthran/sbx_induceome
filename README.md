@@ -3,7 +3,7 @@
 # sbx_induceome
 
 <!-- Badges start -->
-[![Tests](https://github.com/sunbeam-labs/sbx_induceome/actions/workflows/tests.yml/badge.svg)](https://github.com/sunbeam-labs/sbx_induceome/actions/workflows/tests.yml)
+[![Tests](https://github.com/Ulthran/sbx_induceome/actions/workflows/tests.yml/badge.svg)](https://github.com/Ulthran/sbx_induceome/actions/workflows/tests.yml)
 [![DockerHub](https://img.shields.io/docker/pulls/sunbeamlabs/sbx_induceome)](https://hub.docker.com/repository/docker/sunbeamlabs/sbx_induceome/)
 <!-- Badges end -->
 
@@ -37,6 +37,7 @@ NOTE: sbx_induceome makes a couple assumptions about your reference genomes and 
   - reference_fp: Directory with reference genomes
   - mapping_fp: Path to the file mapping samples to strains
   - blast_db: Path to the viral blast db (full path including .faa file name)
+  - phold_db: Path to the phold db (full path to the directory that will hold the tsv and other db files)
   - min_width: The sliding window size for peak finding
   - smoothing_factor: The number of below-threshold sliding windows to tolerate as being part of one peak
     

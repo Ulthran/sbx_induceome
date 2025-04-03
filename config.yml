@@ -3,5 +3,6 @@ sbx_induceome:
   reference_fp: ''
   mapping_fp: ''
   blast_db: ''
+  phold_db: ''
   min_width: 100
   smoothing_factor: 10
