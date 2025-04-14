@@ -253,6 +253,10 @@ rule induceome_phold_predict:
         annotations=Path(Cfg["sbx_induceome"]["phold_db"]) / "phold_annots.tsv",
     output:
         _3di=INDUCEOME_FP / "phold" / "{sample}_predict" / "phold_3di.fasta",
+    benchmark:
+        BENCHMARK_FP / "induceome_phold_predict_{sample}.tsv"
+    log:
+        LOG_FP / "induceome_phold_predict_{sample}.log",
     conda:
         "envs/sbx_induceome_env.yml"
     container:
@@ -274,6 +278,10 @@ rule induceome_phold_compare:
         annotations=Path(Cfg["sbx_induceome"]["phold_db"]) / "phold_annots.tsv",
     output:
         gbk=INDUCEOME_FP / "phold" / "{sample}_compare" / "phold.gbk",
+    benchmark:
+        BENCHMARK_FP / "induceome_phold_compare_{sample}.tsv"
+    log:
+        LOG_FP / "induceome_phold_compare_{sample}.log",
     conda:
         "envs/sbx_induceome_env.yml"
     container:
