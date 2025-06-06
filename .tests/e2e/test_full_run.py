@@ -10,6 +10,11 @@ def setup(tmp_path):
     reads_fp = Path(".tests/data/reads/").resolve()
     ref_fp = Path(".tests/data/ref/").resolve()
     mapping_fp = Path(".tests/data/mapping.csv").resolve()
+    blast_db_fp = tmp_path / "blast_db"
+    blast_db_fp.mkdir(parents=True, exist_ok=True)
+    (blast_db_fp / "db.faa").touch()
+    phold_db_fp = tmp_path / "phold_db"
+    phold_db_fp.mkdir(parents=True, exist_ok=True)
 
     project_dir = tmp_path / "project/"
 
@@ -29,6 +34,28 @@ def setup(tmp_path):
     )
 
     config_str = f"sbx_induceome: {{mapping_fp: {mapping_fp}}}"
+    sp.check_output(
+        [
+            "sunbeam",
+            "config",
+            "--modify",
+            f"{config_str}",
+            f"{config_fp}",
+        ]
+    )
+
+    config_str = f"sbx_induceome: {{blast_db: {blast_db_fp}}}"
+    sp.check_output(
+        [
+            "sunbeam",
+            "config",
+            "--modify",
+            f"{config_str}",
+            f"{config_fp}",
+        ]
+    )
+
+    config_str = f"sbx_induceome: {{phold_db: {phold_db_fp}}}"
     sp.check_output(
         [
             "sunbeam",
