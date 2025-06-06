@@ -1,13 +1,12 @@
 import csv
 
 
-def get_induceome_path() -> Path:
-    for fp in sys.path:
-        if fp.split("/")[-1] == "sbx_induceome":
-            return Path(fp)
-    raise Error(
-        "Filepath for sbx_induceome not found, are you sure it's installed under extensions/sbx_induceome?"
-    )
+INDUCEOME_FP = Cfg["all"]["output_fp"] / "virus" / "induceome"
+try:
+    SBX_INDUCEOME_VERSION = get_ext_version("sbx_induceome")
+except NameError:
+    # For backwards compatibility with older versions of Sunbeam
+    SBX_INDUCOME_VERSION = "0.0.0"
 
 
 def get_induceome_ref_var(sample: str) -> str:
@@ -18,10 +17,6 @@ def get_induceome_ref_var(sample: str) -> str:
     # Using this as a default value
     # Not sure if there's another default we might want
     return "1"
-
-
-INDUCEOME_FP = Cfg["all"]["output_fp"] / "virus" / "induceome"
-SBX_INDUCEOME_VERSION = open(get_induceome_path() / "VERSION").read().strip()
 
 
 # Ingest reference mapping
@@ -57,16 +52,6 @@ SBX_INDUCEOME_SAMPLES = {
     for sample, fps in Samples.items()
     if sample in SBX_INDUCEOME_REF_MAP.keys()
 }
-
-
-try:
-    BENCHMARK_FP
-except NameError:
-    BENCHMARK_FP = output_subdir(Cfg, "benchmarks")
-try:
-    LOG_FP
-except NameError:
-    LOG_FP = output_subdir(Cfg, "logs")
 
 
 localrules:
