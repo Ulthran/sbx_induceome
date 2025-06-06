@@ -6,7 +6,7 @@ try:
     SBX_INDUCEOME_VERSION = get_ext_version("sbx_induceome")
 except NameError:
     # For backwards compatibility with older versions of Sunbeam
-    SBX_INDUCOME_VERSION = "0.0.0"
+    SBX_INDUCEOME_VERSION = "0.0.0"
 
 
 def get_induceome_ref_var(sample: str) -> str:
