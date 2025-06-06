@@ -15,6 +15,7 @@ def setup(tmp_path):
     (blast_db_fp / "db.faa").touch()
     phold_db_fp = tmp_path / "phold_db"
     phold_db_fp.mkdir(parents=True, exist_ok=True)
+    (phold_db_fp / "phold_annots.tsv").touch()
 
     project_dir = tmp_path / "project/"
 
