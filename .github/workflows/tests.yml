@@ -20,7 +20,7 @@ jobs:
       - name: Sunbeam tests
         uses: sunbeam-labs/sbx_test_action@v1
         with:
-          other-extensions: sbx_assembly
+          other-extensions: sunbeam-labs/sbx_assembly
 
       - name: Dump Logs
         shell: bash
