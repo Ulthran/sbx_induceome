@@ -5,3 +5,4 @@
 .tests/data/ref/*.pac
 .tests/data/ref/*.sa
 .snakemake/
+__pycache__/
