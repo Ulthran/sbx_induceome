@@ -3,6 +3,7 @@ sbx_induceome:
   reference_fp: /path/to/refs/
   mapping_fp: /path/to/mapping.csv
   blast_db: /path/to/blast/db.faa
+  pharokka_db: /path/to/pharokka/db/
   phold_db: /path/to/phold/db/
   min_width: 100
   smoothing_factor: 10
