@@ -103,6 +103,8 @@ def run_sunbeam(setup):
             "-n",
             "--include",
             "sbx_induceome",
+            "--include",
+            "sbx_assembly",
             "--show-failed-logs",
         ],
         capture_output=True,
