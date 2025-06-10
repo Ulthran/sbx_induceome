@@ -64,7 +64,7 @@ rule all_induceome:
         expand(INDUCEOME_FP / "peaks" / "{sample}.csv", sample=SBX_INDUCEOME_SAMPLES),
         expand(INDUCEOME_FP / "blastx" / "{sample}.btf", sample=SBX_INDUCEOME_SAMPLES),
         expand(
-            INDUCEOME_FP / "phold" / "{sample}_compare" / "phold.gbk",
+            INDUCEOME_FP / "phold" / "{sample}_plot" / "phold.png",
             sample=SBX_INDUCEOME_SAMPLES,
         ),
 
@@ -215,20 +215,56 @@ rule induceome_blastx:
 
 
 ###
-# PHOLD
+# PHAROKKA/PHOLD/PHYNTENY
 ###
 
 
-rule induceome_install_phold_database:
+rule induceome_install_ph_databases:
     output:
+        pharokka=Path(Cfg["sbx_induceome"]["pharokka_db"])
+        / "pharokka_db"
+        / ".installed",
         annotations=Path(Cfg["sbx_induceome"]["phold_db"]) / "phold_annots.tsv",
+    benchmark:
+        BENCHMARK_FP / "induceome_install_ph_databases.tsv"
+    log:
+        LOG_FP / "induceome_install_ph_databases.log",
     conda:
         "envs/sbx_induceome_env.yml"
     container:
         f"docker://sunbeamlabs/sbx_induceome:{SBX_INDUCEOME_VERSION}"
     shell:
         """
-        phold install --database $(dirname {output.annotations})
+        echo "Installing pharokka database" > {log}
+        install_databases.py -o $(dirname {output.pharokka}) >> {log} 2>&1
+        touch {output.pharokka}
+
+        echo "Installing phold annotations" >> {log}
+        phold install --database $(dirname {output.annotations}) >> {log} 2>&1
+        """
+
+
+rule induceome_pharokka:
+    input:
+        contigs=ASSEMBLY_FP / "megahit" / "{sample}_asm" / "final.contigs.fa",
+        pharokka_db=Path(Cfg["sbx_induceome"]["pharokka_db"]) / "pharokka_db",
+    output:
+        pharokka_gbk=INDUCEOME_FP / "pharokka" / "{sample}_pharokka.gbk",
+    benchmark:
+        BENCHMARK_FP / "induceome_pharokka_{sample}.tsv"
+    log:
+        LOG_FP / "induceome_pharokka_{sample}.log",
+    conda:
+        "envs/sbx_induceome_env.yml"
+    container:
+        f"docker://sunbeamlabs/sbx_induceome:{SBX_INDUCEOME_VERSION}"
+    shell:
+        """
+        if [ ! -s {input.contigs} ]; then
+            touch {output.pharokka_gbk}
+        else
+            pharokka run -i {input.contigs} -o $(dirname {output.pharokka_gbk}) --database {input.pharokka_db} --force
+        fi
         """
 
 
@@ -279,4 +315,23 @@ rule induceome_phold_compare:
         else
             phold compare -i {input.contigs} --predictions_dir $(dirname {input._3di}) -o $(dirname {output.gbk}) --database $(dirname {input.annotations}) -t 8 --force
         fi
+        """
+
+
+rule induceome_phold_plot:
+    input:
+        gbk=INDUCEOME_FP / "phold" / "{sample}_compare" / "phold.gbk",
+    output:
+        png=INDUCEOME_FP / "phold" / "{sample}_plot" / "phold.png",
+    benchmark:
+        BENCHMARK_FP / "induceome_phold_plot_{sample}.tsv"
+    log:
+        LOG_FP / "induceome_phold_plot_{sample}.log",
+    conda:
+        "envs/sbx_induceome_env.yml"
+    container:
+        f"docker://sunbeamlabs/sbx_induceome:{SBX_INDUCEOME_VERSION}"
+    shell:
+        """
+        phold plot -i {input.gbk} -o $(dirname {output.png}) --force
         """

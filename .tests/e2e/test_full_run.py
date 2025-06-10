@@ -13,6 +13,9 @@ def setup(tmp_path):
     blast_db_fp = tmp_path / "blast_db"
     blast_db_fp.mkdir(parents=True, exist_ok=True)
     (blast_db_fp / "db.faa").touch()
+    pharokka_dp_fp = tmp_path / "pharokka_db"
+    pharokka_dp_fp.mkdir(parents=True, exist_ok=True)
+    (pharokka_dp_fp / ".installed").touch()
     phold_db_fp = tmp_path / "phold_db"
     phold_db_fp.mkdir(parents=True, exist_ok=True)
     (phold_db_fp / "phold_annots.tsv").touch()
@@ -56,6 +59,17 @@ def setup(tmp_path):
         ]
     )
 
+    config_str = f"sbx_induceome: {{pharokka_dp: {pharokka_dp_fp}}}"
+    sp.check_output(
+        [
+            "sunbeam",
+            "config",
+            "--modify",
+            f"{config_str}",
+            f"{config_fp}",
+        ]
+    )
+
     config_str = f"sbx_induceome: {{phold_db: {phold_db_fp}}}"
     sp.check_output(
         [
@@ -87,6 +101,11 @@ def run_sunbeam(setup):
             "--directory",
             tmp_path,
             "-n",
+            "--include",
+            "sbx_induceome",
+            "--include",
+            "sbx_assembly",
+            "--show-failed-logs",
         ],
         capture_output=True,
         text=True,
